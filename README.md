@@ -1,31 +1,37 @@
-# cloak-turnstile
+# Cloak Turnstile
 
-把 [CloakBrowser](https://github.com/CloakHQ/CloakBrowser) 的浏览器启动/指纹配置与 [turnstile-bypass](https://github.com/Sophomoresty/turnstile-bypass) 的 CDP 求解器整合为一个可安装、可测试、可发布的 Python 项目。不是两个仓库的目录拼接，也不依赖子模块。
+[![CI](https://github.com/Rinkiko/cloak-turnstile/actions/workflows/ci.yml/badge.svg)](https://github.com/Rinkiko/cloak-turnstile/actions/workflows/ci.yml)
+![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-> 用户原始列表中的 CloakBrowser 重复出现；本项目实际整合两个独立上游。
+**面向浏览器自动化的 Turnstile 验证处理工具。**
 
-## 组成
+通过一个命令启动浏览器、访问目标页面、尝试处理验证并输出结构化结果。支持独立会话、持久化配置、代理与地域参数，适合接入脚本和自动化流程。
 
-- **一个启动入口**：`cloak-turnstile solve`。
-- **一个浏览器实例**：由 CloakBrowser 官方 `launch_persistent_context()` 管理，求解器通过回环地址的 CDP 连接同一实例。
-- **复用上游**：保留 turnstile-bypass 的求解器和扩展；不重写挑战逻辑。
-- **明确失败**：启动、导航或求解失败返回非零退出码与 `ok: false`；没有普通 Chrome 或其他服务的自动兜底。
-- **可发布**：`pyproject.toml`、wheel/sdist 构建、测试、GitHub Actions、上游锁定记录、许可证齐全。
+## 功能
+
+- **验证处理**：尝试处理 Turnstile 组件和 Cloudflare 等待验证页。
+- **会话管理**：临时会话自动清理，指定配置目录后保留 Cookie 和 localStorage。
+- **环境配置**：支持代理、指纹种子、语言、时区及可选 GeoIP。
+- **结构化输出**：stdout 返回单个 JSON 对象，诊断日志写入 stderr。
+- **明确的失败状态**：运行错误返回非零退出码，不自动切换浏览器或求解服务。
 
 ## 环境
 
 - Python 3.10+
 - Node.js **22+**，供上游 CDP WebSocket 传输使用
 - Windows / macOS 桌面；Linux 需要 DISPLAY/Wayland 或 Xvfb
-- 下载 CloakBrowser 浏览器所需的网络和磁盘空间
+- 下载浏览器运行时所需的网络和磁盘空间
 
-浏览器保持**有头模式**。没有另行安装 DrissionPage 或普通 Chrome 的要求。
+浏览器保持**有窗口模式**，Linux 需要桌面环境或 Xvfb。
 
 ## 安装
 
-从本仓库根目录安装：
+获取项目并创建虚拟环境：
 
 ```bash
+git clone https://github.com/Rinkiko/cloak-turnstile.git
+cd cloak-turnstile
 python -m venv .venv
 ```
 
@@ -45,7 +51,7 @@ macOS / Linux：
 .venv/bin/cloak-turnstile fetch
 ```
 
-`doctor` 只检查依赖、Node 版本、扩展和显示环境，**不代表浏览器已下载或挑战已通过**。`fetch` 使用官方 `ensure_binary()` 下载并验证浏览器。也可直接运行 `solve`，首次启动时自动下载。
+`doctor` 只检查依赖、Node 版本、扩展和显示环境，**不代表浏览器已下载或挑战已通过**。`fetch` 下载并校验官方浏览器安装文件。也可直接运行 `solve`，首次启动时自动下载。
 
 需要 GeoIP 时：`python -m pip install -e '.[geoip]'`。
 
@@ -72,7 +78,7 @@ cloak-turnstile solve --url https://TARGET/ --proxy http://HOST:PORT --timezone 
 cloak-turnstile solve --url https://TARGET/ --proxy socks5://HOST:PORT --geoip
 ```
 
-代理由 CloakBrowser 原生处理，支持其官方 API 接受的协议/认证形式；无需代理认证扩展。可使用环境变量 `CLOAK_TURNSTILE_PROXY`，避免将代理口令写入命令行历史。
+代理由浏览器运行时处理，支持其官方 API 接受的协议/认证形式。可使用环境变量 `CLOAK_TURNSTILE_PROXY`，避免将代理口令写入命令行历史。
 
 强制重新验证：
 
@@ -80,7 +86,7 @@ cloak-turnstile solve --url https://TARGET/ --proxy socks5://HOST:PORT --geoip
 cloak-turnstile solve --url https://TARGET/ --profile ./profiles/default --fresh
 ```
 
-扩展默认加载；`--no-patch` 可显式关闭上游 MouseEvent 扩展，用于对比它与当前 CloakBrowser 二进制的兼容性。扩展保持上游实现，未宣称与所有二进制版本兼容。
+鼠标事件兼容扩展默认加载；`--no-patch` 可显式关闭，便于比较不同浏览器版本下的效果。兼容性取决于浏览器版本和目标页面。
 
 Linux 无桌面：
 
@@ -96,23 +102,37 @@ cloak-turnstile solve --url https://demo.turnstile.workers.dev/ --timeout 45
 
 ## 输出与退出码
 
+| 命令 | 作用 |
+|---|---|
+| `doctor` | 检查依赖与显示环境 |
+| `fetch` | 下载并校验浏览器安装文件 |
+| `solve --url URL` | 打开页面并尝试处理验证 |
+
 命令结果在 stdout 中是单个 JSON 对象，依赖日志写入 stderr。`--help` 和 `--version` 使用通常的文本输出。
 
-成功必须有长度大于 20 的 token 或 `cf_clearance`，`kind` 为 `turnstile_token` / `cf_clearance` / `both`。仅进入普通页面或上游返回 `cf_passed`，本项目不视为求解成功。
+客户端结果检查要求长度大于 20 的 token 或 `cf_clearance`，`kind` 为 `turnstile_token` / `cf_clearance` / `both`。仅进入普通页面不算验证成功。**长度检查不等于目标网站的服务端接受。**
 
 - `0`：结果通过校验。
 - `1`：运行错误或没有有效结果。
 - `2`：命令行参数解析错误。
 
-Token 有时效性，并可能绑定来源、会话和客户端。测试站点的 dummy token 不代表生产站点可用；没有“任意站点必过”的保证。超时指页面导航和上游求解各自的预算，不包含首次下载，不是整个进程的硬性总时限。
+Token 有时效性，并可能绑定来源、会话和客户端。测试站点的 dummy token 不代表生产站点可用；没有“任意站点必过”的保证。超时指页面导航和验证处理各自的预算，不包含首次下载，不是整个进程的硬性总时限。
 
-## CloakBrowser 版本与许可
+命令结束后关闭浏览器。项目不包含自动登录、批量采集、代理池或图形管理界面，后续业务操作需要单独接入。
 
-Python 依赖固定为 `cloakbrowser==0.6.2`。`upstream-lock.json` 记录审核时的源码提交，**源码提交记录不等于 PyPI 构建的逐字节身份承诺**。浏览器版本另由官方包选择；需要固定时使用其 `CLOAKBROWSER_VERSION` 环境变量。
+## 运行配置
 
-本项目只分发 Python 源码和 MIT 上游代码，**不打包浏览器二进制**。CloakBrowser 包装器为 MIT；浏览器二进制适用[独立许可](https://github.com/CloakHQ/CloakBrowser/blob/04c3c027c2b68e0a929a5da1ae5ebf82e3aee423/BINARY-LICENSE.md)。最新版的密钥、并发与订阅限制遵循官方实现；没有修改其授权检查。
+浏览器运行时依赖固定为 `cloakbrowser==0.6.2`。运行时负责浏览器版本选择、下载校验和许可管理。需要固定浏览器版本时使用 `CLOAKBROWSER_VERSION`。
 
-可设置 `CLOAKBROWSER_LICENSE_KEY` 使用已有密钥。`CLOAKBROWSER_CACHE_DIR` 可指定下载缓存目录，`CLOAKBROWSER_BINARY_PATH` 可指定已有官方浏览器路径。不要将密钥、profile、浏览器或真实 token 上传 GitHub。
+| 环境变量 | 用途 |
+|---|---|
+| `CLOAK_TURNSTILE_PROXY` | 默认代理地址 |
+| `CLOAKBROWSER_CACHE_DIR` | 浏览器下载缓存目录 |
+| `CLOAKBROWSER_BINARY_PATH` | 已有浏览器可执行文件路径 |
+| `CLOAKBROWSER_LICENSE_KEY` | 已有运行时密钥 |
+| `CLOAKBROWSER_VERSION` | 浏览器版本配置 |
+
+不要将密钥、profile、浏览器或真实 token 上传 GitHub。
 
 ## 开发与验证
 
@@ -125,22 +145,8 @@ python -m build
 
 CI 验证 Python 3.10/3.12/3.13 和 Ubuntu/Windows 上的代码、安装与打包。CI 默认不访问挑战站点；自动化测试验证接口、资源和失败判定，不等同于真实站点通过率测试。
 
-完整设计、来源及验证记录见 [docs/INTEGRATION.md](docs/INTEGRATION.md) 和 [docs/VERIFICATION.md](docs/VERIFICATION.md)。
+更多信息：[运行架构](docs/INTEGRATION.md) · [验证记录](docs/VERIFICATION.md) · [问题反馈](https://github.com/Rinkiko/cloak-turnstile/issues)。
 
-## 上传 GitHub
+## 许可与第三方组件
 
-在仓库根目录执行（先在 GitHub 创建空仓库，替换 OWNER）：
-
-```bash
-git add .
-git commit -m "Initial CloakBrowser and Turnstile integration"
-git branch -M main
-git remote add origin https://github.com/OWNER/cloak-turnstile.git
-git push -u origin main
-```
-
-已有初始提交时跳过 `git commit`。本地初始化不自动上传，也不自动选用当前机器的 GitHub 账号。
-
-## License
-
-本项目集成代码采用 MIT。复用代码的版权和许可见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) 与 `licenses/`。
+本项目代码采用 [MIT](LICENSE)。第三方组件的来源、修改说明及版权见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) 与 `licenses/`。浏览器二进制由运行时从官方渠道获取，不包含在本仓库中，其许可独立于本项目。

@@ -5,6 +5,14 @@ from types import SimpleNamespace
 from cloak_turnstile import cli
 
 
+def test_cli_help_uses_product_identity():
+    help_text = cli.parser().format_help()
+    assert "usage: cloak-turnstile" in help_text
+    assert "Cloak Turnstile" in help_text
+    assert "browser-based challenge handling" in help_text
+    assert cli.parser().parse_args(["doctor"]).command == "doctor"
+
+
 def test_cli_json_success_and_stdout_isolation(monkeypatch, capsys):
     def solve(options):
         print("dependency diagnostic")

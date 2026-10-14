@@ -42,12 +42,15 @@ def doctor() -> dict:
 
 
 def parser() -> argparse.ArgumentParser:
-    ap = argparse.ArgumentParser(description="CloakBrowser + turnstile-bypass")
+    ap = argparse.ArgumentParser(
+        prog="cloak-turnstile",
+        description="Cloak Turnstile - browser-based challenge handling and session management",
+    )
     ap.add_argument("--version", action="version", version=__version__)
     commands = ap.add_subparsers(dest="command", required=True)
     commands.add_parser("doctor", help="Check dependencies without downloading or launching a browser")
-    commands.add_parser("fetch", help="Download and verify the official CloakBrowser binary")
-    run = commands.add_parser("solve", help="Launch CloakBrowser and run the upstream CDP solver")
+    commands.add_parser("fetch", help="Download and verify the browser runtime")
+    run = commands.add_parser("solve", help="Open a page and attempt to resolve its challenge")
     run.add_argument("--url", required=True)
     run.add_argument("--timeout", type=float, default=45.0)
     run.add_argument("--proxy", default=os.getenv("CLOAK_TURNSTILE_PROXY"))
@@ -57,7 +60,7 @@ def parser() -> argparse.ArgumentParser:
     run.add_argument("--seed", type=int)
     run.add_argument("--geoip", action="store_true")
     run.add_argument("--fresh", action="store_true", help="Delete this host's CF cookies before solving")
-    run.add_argument("--no-patch", action="store_true", help="Do not load the upstream MouseEvent extension")
+    run.add_argument("--no-patch", action="store_true", help="Disable the mouse-event compatibility extension")
     return ap
 
 

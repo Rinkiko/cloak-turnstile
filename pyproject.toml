@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "cloak-turnstile"
 version = "0.1.0"
-description = "CloakBrowser launch and turnstile-bypass CDP integration"
+description = "Browser-based Turnstile challenge handling with persistent sessions and JSON output"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
@@ -15,6 +15,11 @@ dependencies = ["cloakbrowser==0.6.2"]
 [project.optional-dependencies]
 geoip = ["cloakbrowser[geoip]==0.6.2"]
 dev = ["pytest>=8,<10", "build>=1.2,<2", "ruff>=0.11,<1"]
+
+[project.urls]
+Homepage = "https://github.com/Rinkiko/cloak-turnstile"
+Documentation = "https://github.com/Rinkiko/cloak-turnstile#readme"
+Issues = "https://github.com/Rinkiko/cloak-turnstile/issues"
 
 [project.scripts]
 cloak-turnstile = "cloak_turnstile.cli:main"

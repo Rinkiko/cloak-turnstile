@@ -1,38 +1,49 @@
-# Integration design
+# Runtime architecture
 
 ```text
-cloak-turnstile CLI
-  -> SolveOptions validation
-  -> cloakbrowser.launch_persistent_context(headless=False)
-  -> Playwright page navigation and exact Target.getTargetInfo
-  -> upstream solve_agent_browser.solve(local CDP port, target ID)
-  -> verified token / clearance result
-  -> context.close() and temporary profile cleanup
+CLI / Python call
+  -> validate SolveOptions
+  -> allocate temporary or persistent profile
+  -> launch a headed browser context
+  -> navigate and bind the exact CDP target
+  -> run challenge handling over loopback CDP
+  -> check token / clearance completeness
+  -> return JSON, close browser, clean temporary profile
 ```
 
-## Why this integration
+## Responsibilities
 
-The official persistent launch API supplies the binary, fingerprint flags, proxy handling, license environment and profile seed. Starting a separate DrissionPage Chrome would lose that launch configuration and create a second browser owner. This project therefore reuses the CDP solver, not the original multi-lane dispatcher. Node.js is still required by that solver's CDP transport.
+| Layer | Responsibility |
+|---|---|
+| `cli.py` | Commands, option parsing, stdout/stderr separation and exit codes |
+| `runner.py` | Options, browser lifecycle, profile ownership and result checking |
+| Browser runtime | Binary selection, fingerprint configuration, proxy configuration and launch |
+| CDP challenge component | Inspect the active page and attempt challenge handling |
+| Compatibility extension | Mouse-event compatibility inside challenge frames |
 
-The legacy agent-browser helpers remain in the vendored upstream module to preserve provenance, but the integration never invokes agent-browser, DrissionPage, Camoufox or an external paid solving service. No such lane is a fallback.
+The runtime uses CloakBrowser's official persistent-context API. The CDP challenge component and extension are maintained copies of third-party code. Exact origins, revisions and modifications are recorded in [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md) and `upstream-lock.json`.
+
+## One browser owner
+
+The runner owns one browser context for the entire request. Navigation and challenge interactions address the same browser session, so proxy settings and profile state remain consistent between phases. The challenge component does not start a second browser or choose a replacement service on failure.
 
 ## Semantics
 
 - A per-run CDP port is bound only to 127.0.0.1. There is a small allocation/launch race after releasing the ephemeral socket; a launch error propagates instead of attaching to another browser.
 - Use the actual Playwright page's CDP target ID, not an arbitrary tab from `/json/list`.
-- The official launcher starts one persistent context. A temporary profile is removed after close; a user-selected profile is retained even on failure.
-- The adapter checks token/clearance length independently of upstream `kind`. An upstream `cf_passed` without either proof is rejected.
+- The browser context is closed after extracting the result. A temporary profile is removed after close; a user-selected profile is retained even on failure. Concurrent processes must not share one profile.
+- The runner checks token/clearance length independently of `kind`. A `cf_passed` result without a token or clearance is rejected. Length greater than 20 satisfies the client's completeness check, not cryptographic validation or server-side acceptance.
 - Clearance values are not copied into output. An explicitly selected profile retains the browser session.
-- Raw CDP interactions are controlled by the upstream solver. The CloakBrowser `humanize` option is not advertised because it does not alter that raw CDP path.
-- The upstream extension is loaded by default, and may be explicitly disabled. Current binaries may already fix CDP mouse coordinates; compatibility depends on the binary/site.
+- Mouse interactions use raw CDP. The runtime's Playwright `humanize` option is not exposed because it does not change that interaction path.
+- The mouse-event compatibility extension is loaded by default, and may be explicitly disabled. Current binaries may already fix CDP mouse coordinates; compatibility depends on the binary/site.
 - HTTP/HTTPS URLs only. No automatic timeout retries, proxy rotation or replacement browser.
 
-## Updating upstream
+## Maintenance
 
-1. Review the exact new commit and license.
-2. Replace only the listed upstream files. Reapply the package-relative import patch.
-3. Update `upstream-lock.json`, version pin and `THIRD_PARTY_NOTICES.md`.
-4. Run tests, wheel/sdist build, installed-wheel checks, and an explicitly selected live test.
-5. Do not copy `.git`, `.venv`, profiles, keys, browser binaries or output containing live tokens.
+1. Review dependency/API changes and licensing before updating.
+2. Record third-party revisions and modifications in the provenance files.
+3. Run tests, package builds and installed-wheel resource checks.
+4. Run a separate browser-level test before claiming live target compatibility.
+5. Keep profiles, credentials, browser binaries and real tokens out of the repository.
 
-The project name is descriptive and does not imply endorsement by either upstream.
+The project does not imply endorsement by its dependency providers.

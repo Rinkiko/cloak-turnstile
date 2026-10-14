@@ -1,0 +1,36 @@
+[build-system]
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "cloak-turnstile"
+version = "0.1.0"
+description = "CloakBrowser launch and turnstile-bypass CDP integration"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE", "licenses/*.txt"]
+dependencies = ["cloakbrowser==0.6.2"]
+
+[project.optional-dependencies]
+geoip = ["cloakbrowser[geoip]==0.6.2"]
+dev = ["pytest>=8,<10", "build>=1.2,<2", "ruff>=0.11,<1"]
+
+[project.scripts]
+cloak-turnstile = "cloak_turnstile.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/cloak_turnstile"]
+
+[tool.hatch.build.targets.sdist]
+include = ["/src", "/tests", "/docs", "/.github", "/pyproject.toml", "/README.md", "/LICENSE", "/licenses", "/THIRD_PARTY_NOTICES.md", "/upstream-lock.json", "/.gitignore", "/.gitattributes"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py310"
+extend-exclude = ["src/cloak_turnstile/_vendor"]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F"]

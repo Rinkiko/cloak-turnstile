@@ -1,0 +1,28 @@
+{
+  "reviewed_on": "2026-10-14",
+  "sources": [
+    {
+      "name": "CloakBrowser",
+      "repository": "https://github.com/CloakHQ/CloakBrowser",
+      "reviewed_commit": "04c3c027c2b68e0a929a5da1ae5ebf82e3aee423",
+      "dependency": "cloakbrowser==0.6.2",
+      "distribution": "pypi-dependency",
+      "wrapper_license": "MIT",
+      "binary_bundled": false
+    },
+    {
+      "name": "turnstile-bypass",
+      "repository": "https://github.com/Sophomoresty/turnstile-bypass",
+      "commit": "abff97cb5345bcff0609472e5b2b789f1f9a9e18",
+      "distribution": "vendored-subset",
+      "license": "MIT",
+      "files": [
+        "scripts/solve_agent_browser.py",
+        "scripts/runtime.py",
+        "assets/turnstilePatch/manifest.json",
+        "assets/turnstilePatch/script.js"
+      ],
+      "patches": ["Use a package-relative runtime import"]
+    }
+  ]
+}

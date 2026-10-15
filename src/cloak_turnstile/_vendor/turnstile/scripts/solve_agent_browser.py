@@ -164,6 +164,8 @@ def node_cdp(ws_url: str, plan: dict[str, Any], timeout: float = 14.0) -> dict[s
         [node, "-e", NODE_RUNNER, ws_url, json.dumps(plan)],
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        errors="replace",
         timeout=timeout,
     )
     raw = (proc.stdout or "").strip()

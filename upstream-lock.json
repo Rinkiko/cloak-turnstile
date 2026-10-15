@@ -22,7 +22,10 @@
         "assets/turnstilePatch/manifest.json",
         "assets/turnstilePatch/script.js"
       ],
-      "patches": ["Use a package-relative runtime import"]
+      "patches": [
+        "Use a package-relative runtime import",
+        "Decode node_cdp subprocess output as UTF-8 (non-UTF-8 Windows locales such as GBK)"
+      ]
     }
   ]
 }
